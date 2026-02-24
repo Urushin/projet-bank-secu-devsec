@@ -328,6 +328,8 @@ La classe `SecuConfig` est le fichier central de sécurité. Voici chaque mécan
 | `X-Frame-Options: DENY` | **Clickjacking** | Empêche l'inclusion de l'app dans une `<iframe>` |
 | `X-XSS-Protection: 1; mode=block` | Cross-Site Scripting (XSS) | Le navigateur bloque la page si XSS détecté |
 | `Content-Security-Policy` | Injection de scripts/styles | Autorise uniquement les sources de confiance |
+| `Referrer-Policy: strict-origin-when-cross-origin` | Fuite d'informations | Contrôle les données envoyées dans l'en-tête Referer |
+| `Strict-Transport-Security: max-age=31536000` | Downgrade HTTPS→HTTP | Force le navigateur à toujours utiliser HTTPS (HSTS) |
 
 **Détail du CSP :**
 
@@ -339,7 +341,46 @@ img-src 'self' data:;                        → Images : nous + inline (data:)
 script-src 'self' 'unsafe-inline';           → JS : notre domaine + inline
 ```
 
-#### 5.2.5. Gestion des sessions
+#### 5.2.5. Enforcement HTTPS et Redirection HTTP→HTTPS
+
+```java
+// Dans SecuConfig.java — Force TOUTES les requêtes à passer par HTTPS
+.requiresChannel(channel -> channel
+    .anyRequest().requiresSecure())
+```
+
+**Configuration SSL dans `application.properties` :**
+
+```properties
+# Port principal : HTTPS sur 8443
+server.port=8443
+
+# Certificat SSL (Keystore JKS)
+server.ssl.key-store=classpath:tp1-devsec-keystore.jks
+server.ssl.key-store-password=tp1devsec
+server.ssl.key-store-type=JKS
+server.ssl.key-alias=tomcat
+```
+
+**Redirection automatique HTTP (8080) → HTTPS (8443) :**
+
+```java
+@Bean
+public WebServerFactoryCustomizer<TomcatServletWebServerFactory> httpToHttpsRedirect() {
+    return factory -> {
+        Connector httpConnector = new Connector(TomcatServletWebServerFactory.DEFAULT_PROTOCOL);
+        httpConnector.setScheme("http");
+        httpConnector.setPort(8080);
+        httpConnector.setSecure(false);
+        httpConnector.setRedirectPort(8443);
+        factory.addAdditionalTomcatConnectors(httpConnector);
+    };
+}
+```
+
+> **🔒 Résultat :** Toute requête sur `http://localhost:8080` est automatiquement redirigée vers `https://localhost:8443`. L'en-tête HSTS garantit que le navigateur n'utilise plus jamais HTTP après la première visite.
+
+#### 5.2.6. Gestion des sessions
 
 ```java
 .sessionManagement(session -> session
@@ -350,7 +391,7 @@ script-src 'self' 'unsafe-inline';           → JS : notre domaine + inline
 
 > **🔒 Pourquoi limiter à 1 session ?** Si un attaquant vole les identifiants d'un utilisateur, celui-ci sera déconnecté dès que l'attaquant se connecte, ce qui est un signal d'alerte immédiat.
 
-#### 5.2.6. Hachage des mots de passe (BCrypt)
+#### 5.2.7. Hachage des mots de passe (BCrypt)
 
 ```java
 @Bean
@@ -423,8 +464,11 @@ public boolean isAccountOwner(Authentication authentication, int accountId) {
 
 ```mermaid
 graph TB
+    subgraph "Couche 0 — Transport"
+        L0["TLS/HTTPS obligatoire<br/>Keystore JKS · Port 8443<br/>HSTS · Redirection HTTP→HTTPS"]
+    end
     subgraph "Couche 1 — Réseau"
-        L1["En-têtes HTTP<br/>CSP · X-Frame-Options · XSS"]
+        L1["En-têtes HTTP<br/>CSP · X-Frame-Options · XSS<br/>Referrer-Policy · HSTS"]
     end
     subgraph "Couche 2 — Authentification"
         L2["Spring Security FilterChain<br/>Form Login · BCrypt · Sessions"]
@@ -443,7 +487,7 @@ graph TB
         L6["GlobalExceptionHandler<br/>@ControllerAdvice<br/>Zéro Error 500"]
     end
 
-    L1 --> L2 --> L3 --> L4 --> L5
+    L0 --> L1 --> L2 --> L3 --> L4 --> L5
     L3 --> L3b
     L4 --> L6
 ```
@@ -612,7 +656,9 @@ POST /transaction → Erreur → flash("error", "Fonds insuffisants") → 302 /a
 
 # 3. Exécuter AuditBankApplication.java en tant que Java Application
 
-# 4. Ouvrir le navigateur : http://localhost:8080
+# 4. Ouvrir le navigateur : https://localhost:8443
+#    (Le certificat est auto-signé → accepter l'avertissement du navigateur)
+#    Note : http://localhost:8080 redirige automatiquement vers HTTPS
 ```
 
 ### Comptes de test
@@ -645,3 +691,6 @@ POST /transaction → Erreur → flash("error", "Fonds insuffisants") → 302 /a
 | 12 | Packaging WAR incompatible | 🟢 Faible | Changé en `jar` |
 | 13 | `ddl-auto=create` efface la BDD | 🔴 Critique | Changé en `update` |
 | 14 | Dépendance validation manquante | 🟢 Faible | Ajout `spring-boot-starter-validation` |
+| 15 | Communication en clair (HTTP) | 🔴 Critique | TLS/HTTPS obligatoire (port 8443), keystore JKS, redirection HTTP→HTTPS |
+| 16 | Pas de HSTS | 🟡 Moyen | `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| 17 | Pas de Referrer-Policy | 🟢 Faible | `Referrer-Policy: strict-origin-when-cross-origin` |
