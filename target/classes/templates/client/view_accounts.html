@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditBank — My Banking</title>
+    <link rel="stylesheet" th:href="@{/styles/style.css}">
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon">A</div>
+                <span class="sidebar-logo-text">AuditBank</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-link active" data-section="home" onclick="switchSection(this)">
+                    <span class="icon">🏠</span><span class="sidebar-text">Home</span>
+                </button>
+                <button class="sidebar-link" data-section="cards" onclick="switchSection(this)">
+                    <span class="icon">💳</span><span class="sidebar-text">Cards</span>
+                </button>
+                <button class="sidebar-link" data-section="transfer" onclick="switchSection(this)">
+                    <span class="icon">↗️</span><span class="sidebar-text">Transfers</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-avatar">C</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name" sec:authentication="name">Client</div>
+                        <div class="sidebar-user-role">Personal</div>
+                    </div>
+                </div>
+                <form th:action="@{/logout}" method="post" style="margin-top:10px;">
+                    <button type="submit" class="btn btn-ghost btn-sm" style="width:100%;">Sign out</button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Collapse sidebar">◀</button>
+
+        <!-- ===== MAIN ===== -->
+        <main class="main-content" id="mainContent">
+
+            <!-- Toasts -->
+            <div class="toast-container">
+                <div th:if="${success != null}" class="toast success">
+                    <div class="toast-icon">✓</div>
+                    <div class="toast-content">
+                        <div class="toast-title">Success</div>
+                        <div class="toast-message" th:text="${success}">Done</div>
+                    </div>
+                    <button class="toast-close" onclick="dismissToast(this)">✕</button>
+                </div>
+                <div th:if="${error != null}" class="toast error">
+                    <div class="toast-icon">✕</div>
+                    <div class="toast-content">
+                        <div class="toast-title">Operation Denied</div>
+                        <div class="toast-message" th:text="${error}">Failed</div>
+                    </div>
+                    <button class="toast-close" onclick="dismissToast(this)">✕</button>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Home                    -->
+            <!-- ================================ -->
+            <div class="app-section active-section" id="sec-home">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>My Banking</h1>
+                        <p>Your personal finance overview.</p>
+                    </div>
+                </div>
+
+                <!-- Balance -->
+                <div class="balance-widget animate-in">
+                    <div class="balance-label">Total Balance</div>
+                    <div class="balance-amount"><span th:text="${#aggregates.sum(accounts.![balance])}">0</span><span
+                            class="currency">EUR</span></div>
+                    <div class="balance-sparkline">
+                        <div class="sparkline-bar" style="height:25%"></div>
+                        <div class="sparkline-bar" style="height:42%"></div>
+                        <div class="sparkline-bar" style="height:35%"></div>
+                        <div class="sparkline-bar" style="height:58%"></div>
+                        <div class="sparkline-bar" style="height:72%"></div>
+                        <div class="sparkline-bar" style="height:48%"></div>
+                        <div class="sparkline-bar active" style="height:86%"></div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions (Single occurrence) -->
+                <div class="quick-actions animate-in">
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='CREDIT'">
+                        <div class="quick-action-icon add">↓</div><span class="quick-action-label">Add Money</span>
+                    </button>
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='DEBIT'">
+                        <div class="quick-action-icon send">↑</div><span class="quick-action-label">Send</span>
+                    </button>
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='TRANSFER'">
+                        <div class="quick-action-icon exchange">⇄</div><span class="quick-action-label">Transfer</span>
+                    </button>
+                </div>
+
+                <!-- Accounts Summary -->
+                <div class="card animate-in" style="padding:0;overflow:hidden;">
+                    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+                        <h3 style="font-size:var(--text-base);font-weight:700;">My Accounts</h3>
+                        <span class="badge badge-client" th:text="${#lists.size(accounts)} + ' accounts'">2</span>
+                    </div>
+                    <div class="data-table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Account</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="acc : ${accounts}">
+                                    <td style="font-weight:600;"><span style="color:var(--accent);">●</span> #<span
+                                            th:text="${acc.accountId}">1</span></td>
+                                    <td style="font-weight:700;font-variant-numeric:tabular-nums;"
+                                        th:text="${acc.balance} + ' €'">0 €</td>
+                                    <td><span class="badge badge-active">● Active</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Cards                   -->
+            <!-- ================================ -->
+            <div class="app-section" id="sec-cards">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>Virtual Card</h1>
+                        <p>Manage your card settings and security.</p>
+                    </div>
+                </div>
+
+                <div class="card animate-in">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="font-size:var(--text-base);font-weight:700;">Card Preview</h3>
+                        <span class="card-hint" style="margin:0;">Click to flip</span>
+                    </div>
+                    <div class="card-container" onclick="this.classList.toggle('flipped')">
+                        <div class="card-inner">
+                            <div class="card-face card-front">
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                                    <div class="card-chip"></div>
+                                    <span
+                                        style="font-size:var(--text-xs);font-weight:700;color:rgba(255,255,255,.7);">AuditBank</span>
+                                </div>
+                                <div class="card-number">•••• •••• •••• 4521</div>
+                                <div class="card-bottom">
+                                    <div>
+                                        <div
+                                            style="font-size:.55rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;">
+                                            Card Holder</div>
+                                        <div class="card-holder-name" sec:authentication="name">CLIENT</div>
+                                    </div>
+                                    <div class="card-expiry"><span>12/28</span></div>
+                                </div>
+                            </div>
+                            <div class="card-face card-back">
+                                <div class="card-back-strip"></div>
+                                <div class="card-cvv-area">
+                                    <div class="card-cvv-label">CVV</div>
+                                    <div class="card-cvv-value">•••</div>
+                                </div>
+                                <p style="font-size:.55rem;color:rgba(255,255,255,.3);margin-top:auto;">Property of
+                                    AuditBank.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-controls">
+                        <div class="card-control">
+                            <div class="card-control-label">
+                                <div class="card-control-title">Freeze Card</div>
+                                <div class="card-control-desc">Disable transactions</div>
+                            </div>
+                            <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="card-control">
+                            <div class="card-control-label">
+                                <div class="card-control-title">Contactless</div>
+                                <div class="card-control-desc">NFC payments</div>
+                            </div>
+                            <label class="toggle"><input type="checkbox" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Transfer                -->
+            <!-- ================================ -->
+            <div class="app-section" id="sec-transfer">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>New Transaction</h1>
+                        <p>Client operations up to 1 000 €.</p>
+                    </div>
+                </div>
+
+                <div class="card" style="max-width:520px;">
+                    <form th:action="@{/transaction}" method="post" onsubmit="return validateClientTx()">
+                        <div class="form-group">
+                            <label class="form-label">Account <span class="required">*</span></label>
+                            <select class="form-input form-select" name="accountId" required>
+                                <option value="" disabled selected>Select your account</option>
+                                <option th:each="acc : ${accounts}" th:value="${acc.accountId}"
+                                    th:text="'#' + ${acc.accountId} + ' — ' + ${acc.balance} + ' €'"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Operation <span class="required">*</span></label>
+                            <select class="form-input form-select" name="operation" id="txOp" required
+                                onchange="toggleDest()">
+                                <option value="CREDIT">Credit (Add Money)</option>
+                                <option value="DEBIT">Debit (Withdraw)</option>
+                                <option value="TRANSFER">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="txDest" style="display:none">
+                            <label class="form-label">Destination Account ID</label>
+                            <input class="form-input" type="number" name="toAccountId" placeholder="Recipient ID">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount (€) <span class="required">*</span></label>
+                            <input class="form-input" type="number" name="amount" id="txAmount" min="0.01" max="1000"
+                                step="0.01" placeholder="Max 1 000 €" required>
+                            <p class="form-error" id="txAmountError">Clients are limited to 1 000 € per operation.</p>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg" id="txSubmitBtn"
+                            style="width:100%;margin-top:8px;">Confirm</button>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM BAR ===== -->
+    <nav class="bottom-bar">
+        <button class="bottom-bar-item active" data-section="home" onclick="switchSection(this)"><span
+                class="icon">🏠</span>Home</button>
+        <button class="bottom-bar-item" data-section="cards" onclick="switchSection(this)"><span
+                class="icon">💳</span>Cards</button>
+        <button class="bottom-bar-item" data-section="transfer" onclick="switchSection(this)"><span
+                class="icon">↗️</span>Transfer</button>
+    </nav>
+
+    <script>
+        /* ---- Sidebar Toggle ---- */
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const btn = document.getElementById('sidebarToggle');
+            sb.classList.toggle('collapsed');
+            btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+        }
+
+        /* ---- SPA Section Switching ---- */
+        function switchSection(el) {
+            const target = el.getAttribute('data-section');
+            if (!target) return;
+            document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active-section'));
+            const sec = document.getElementById('sec-' + target);
+            if (sec) sec.classList.add('active-section');
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('.sidebar-link[data-section="' + target + '"]')?.classList.add('active');
+            document.querySelectorAll('.bottom-bar-item').forEach(b => b.classList.remove('active'));
+            document.querySelector('.bottom-bar-item[data-section="' + target + '"]')?.classList.add('active');
+        }
+
+        /* ---- Modals ---- */
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        /* ---- Transfer Form ---- */
+        function toggleDest() { document.getElementById('txDest').style.display = document.getElementById('txOp').value === 'TRANSFER' ? 'block' : 'none'; }
+
+        /* ---- Toasts ---- */
+        function dismissToast(el) { const t = el.parentElement; t.classList.add('removing'); setTimeout(() => t.remove(), 300); }
+        document.querySelectorAll('.toast').forEach(t => { setTimeout(() => { t.classList.add('removing'); setTimeout(() => t.remove(), 300); }, 5000); });
+
+        /* ---- Validation (Client ≤ 1000) ---- */
+        function validateClientTx() {
+            const a = parseFloat(document.getElementById('txAmount').value);
+            const i = document.getElementById('txAmount');
+            const e = document.getElementById('txAmountError');
+            if (isNaN(a) || a > 1000 || a <= 0) { i.classList.add('error'); e.style.display = 'block'; return false; }
+            i.classList.remove('error'); e.style.display = 'none';
+            document.getElementById('txSubmitBtn').classList.add('loading');
+            return true;
+        }
+    </script>
+</body>
+
+</html>

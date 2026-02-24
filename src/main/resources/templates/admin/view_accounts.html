@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditBank — Admin</title>
+    <link rel="stylesheet" th:href="@{/styles/style.css}">
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon">A</div>
+                <span class="sidebar-logo-text">AuditBank</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-link active" data-section="dashboard" onclick="switchSection(this)">
+                    <span class="icon">🏠</span><span class="sidebar-text">Dashboard</span>
+                </button>
+                <button class="sidebar-link" data-section="accounts" onclick="switchSection(this)">
+                    <span class="icon">💳</span><span class="sidebar-text">Accounts</span>
+                </button>
+                <button class="sidebar-link" data-section="transfer" onclick="switchSection(this)">
+                    <span class="icon">↗️</span><span class="sidebar-text">Transfers</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-avatar">A</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name" sec:authentication="name">Admin</div>
+                        <div class="sidebar-user-role">Administrator</div>
+                    </div>
+                </div>
+                <form th:action="@{/logout}" method="post" style="margin-top:10px;">
+                    <button type="submit" class="btn btn-ghost btn-sm" style="width:100%;">Sign out</button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Collapse sidebar">◀</button>
+
+        <!-- ===== MAIN ===== -->
+        <main class="main-content" id="mainContent">
+
+            <!-- Toasts -->
+            <div class="toast-container" id="toastContainer">
+                <div th:if="${success != null}" class="toast success">
+                    <div class="toast-icon">✓</div>
+                    <div class="toast-content">
+                        <div class="toast-title">Success</div>
+                        <div class="toast-message" th:text="${success}">Done</div>
+                    </div>
+                    <button class="toast-close" onclick="dismissToast(this)">✕</button>
+                </div>
+                <div th:if="${error != null}" class="toast error">
+                    <div class="toast-icon">✕</div>
+                    <div class="toast-content">
+                        <div class="toast-title">Error</div>
+                        <div class="toast-message" th:text="${error}">Failed</div>
+                    </div>
+                    <button class="toast-close" onclick="dismissToast(this)">✕</button>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Dashboard              -->
+            <!-- ================================ -->
+            <div class="app-section active-section" id="sec-dashboard">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>Dashboard</h1>
+                        <p>Your consolidated financial overview.</p>
+                    </div>
+                </div>
+
+                <!-- Balance -->
+                <div class="balance-widget animate-in">
+                    <div class="balance-label">Consolidated Balance</div>
+                    <div class="balance-amount"><span th:text="${#aggregates.sum(accounts.![balance])}">0</span><span
+                            class="currency">EUR</span></div>
+                    <div class="balance-sparkline">
+                        <div class="sparkline-bar" style="height:30%"></div>
+                        <div class="sparkline-bar" style="height:50%"></div>
+                        <div class="sparkline-bar" style="height:65%"></div>
+                        <div class="sparkline-bar" style="height:40%"></div>
+                        <div class="sparkline-bar" style="height:78%"></div>
+                        <div class="sparkline-bar" style="height:55%"></div>
+                        <div class="sparkline-bar active" style="height:92%"></div>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="metrics-grid">
+                    <div class="card animate-in">
+                        <div class="metric-label">📊 Total Accounts</div>
+                        <div class="metric-value" th:text="${#lists.size(accounts)}">0</div>
+                        <span class="metric-change positive">● Active</span>
+                    </div>
+                    <div class="card animate-in">
+                        <div class="metric-label">💰 Total Balance</div>
+                        <div class="metric-value"><span th:text="${#aggregates.sum(accounts.![balance])}">0</span><span
+                                style="font-size:var(--text-sm);opacity:.4;margin-left:4px;">€</span></div>
+                        <span class="metric-change positive">▲ Across all accounts</span>
+                    </div>
+                    <div class="card animate-in">
+                        <div class="metric-label">👥 Users</div>
+                        <div class="metric-value" th:text="${#lists.size(accounts)}">0</div>
+                        <span class="metric-change positive">● Verified</span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions animate-in">
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='CREDIT'">
+                        <div class="quick-action-icon add">↓</div><span class="quick-action-label">Credit</span>
+                    </button>
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='DEBIT'">
+                        <div class="quick-action-icon send">↑</div><span class="quick-action-label">Debit</span>
+                    </button>
+                    <button class="quick-action-btn"
+                        onclick="switchSection(document.querySelector('[data-section=transfer]'));document.getElementById('txOp').value='TRANSFER'">
+                        <div class="quick-action-icon exchange">⇄</div><span class="quick-action-label">Transfer</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Accounts               -->
+            <!-- ================================ -->
+            <div class="app-section" id="sec-accounts">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>Accounts</h1>
+                        <p>Manage all registered bank accounts.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('createModal')">+ New Account</button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-bar">
+                    <span class="search-bar-icon">🔍</span>
+                    <input type="text" placeholder="Search by name or email…" oninput="filterTable(this.value)">
+                </div>
+
+                <!-- Table -->
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <div class="data-table-wrapper">
+                        <table class="data-table" id="accountsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Holder</th>
+                                    <th>Email</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="acc : ${accounts}" class="searchable-row">
+                                    <td style="font-variant-numeric:tabular-nums;font-weight:600;"
+                                        th:text="${acc.accountId}">1</td>
+                                    <td>
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <div class="sidebar-avatar" style="width:26px;height:26px;font-size:.6rem;"
+                                                th:text="${#strings.substring(acc.owner.name,0,1)}">J</div>
+                                            <span th:text="${acc.owner.name}" th:title="${acc.owner.name}"
+                                                style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">John</span>
+                                        </div>
+                                    </td>
+                                    <td style="color:var(--text-muted);" th:text="${acc.owner.email}"
+                                        th:title="${acc.owner.email}">j@d.com</td>
+                                    <td style="font-weight:700;font-variant-numeric:tabular-nums;"
+                                        th:text="${acc.balance} + ' €'">0 €</td>
+                                    <td><span class="badge badge-active">● Active</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================ -->
+            <!-- SECTION: Transfer               -->
+            <!-- ================================ -->
+            <div class="app-section" id="sec-transfer">
+
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>New Transaction</h1>
+                        <p>Admin operations must exceed 1 000 €.</p>
+                    </div>
+                </div>
+
+                <div class="card" style="max-width:520px;">
+                    <form th:action="@{/transaction}" method="post" onsubmit="return validateAdminTx()">
+                        <div class="form-group">
+                            <label class="form-label">Source Account <span class="required">*</span></label>
+                            <select class="form-input form-select" name="accountId" required>
+                                <option value="" disabled selected>Select an account</option>
+                                <option th:each="acc : ${accounts}" th:value="${acc.accountId}"
+                                    th:text="'#' + ${acc.accountId} + ' — ' + ${acc.owner.name} + ' (' + ${acc.balance} + ' €)'">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Operation <span class="required">*</span></label>
+                            <select class="form-input form-select" name="operation" id="txOp" required
+                                onchange="toggleDest()">
+                                <option value="CREDIT">Credit</option>
+                                <option value="DEBIT">Debit</option>
+                                <option value="TRANSFER">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="txDest" style="display:none">
+                            <label class="form-label">Destination Account ID</label>
+                            <input class="form-input" type="number" name="toAccountId" placeholder="Account ID">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount (€) <span class="required">*</span></label>
+                            <input class="form-input" type="number" name="amount" id="txAmount" min="0.01" step="0.01"
+                                placeholder="Min. 1 001 €" required>
+                            <p class="form-error" id="txAmountError">Admins must enter an amount above 1 000 €</p>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg" id="txSubmitBtn"
+                            style="width:100%;margin-top:8px;">Confirm Transaction</button>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ===== CREATE MODAL ===== -->
+    <div class="modal-overlay" id="createModal" onclick="if(event.target===this)closeModal('createModal')">
+        <div class="modal">
+            <h3 class="modal-title">Create New Account</h3>
+            <p class="modal-body">Enter the registered email of a client to open a new bank account.</p>
+            <form th:action="@{/accounts/create}" method="post">
+                <div class="form-group">
+                    <label class="form-label" for="userEmail">Client Email <span class="required">*</span></label>
+                    <input class="form-input" type="email" id="userEmail" name="userEmail"
+                        placeholder="client1@bank.com" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('createModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" onclick="this.classList.add('loading')">Create
+                        Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM BAR ===== -->
+    <nav class="bottom-bar">
+        <button class="bottom-bar-item active" data-section="dashboard" onclick="switchSection(this)"><span
+                class="icon">🏠</span>Home</button>
+        <button class="bottom-bar-item" data-section="accounts" onclick="switchSection(this)"><span
+                class="icon">💳</span>Accounts</button>
+        <button class="bottom-bar-item" data-section="transfer" onclick="switchSection(this)"><span
+                class="icon">↗️</span>Transfer</button>
+    </nav>
+
+    <script>
+        /* ---- Sidebar Toggle ---- */
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const btn = document.getElementById('sidebarToggle');
+            sb.classList.toggle('collapsed');
+            btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+        }
+
+        /* ---- SPA Section Switching ---- */
+        function switchSection(el) {
+            const target = el.getAttribute('data-section');
+            if (!target) return;
+            // Hide all sections
+            document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active-section'));
+            // Show target
+            const sec = document.getElementById('sec-' + target);
+            if (sec) sec.classList.add('active-section');
+            // Update sidebar active
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('.sidebar-link[data-section="' + target + '"]')?.classList.add('active');
+            // Update bottom bar active
+            document.querySelectorAll('.bottom-bar-item').forEach(b => b.classList.remove('active'));
+            document.querySelector('.bottom-bar-item[data-section="' + target + '"]')?.classList.add('active');
+        }
+
+        /* ---- Search / Filter ---- */
+        function filterTable(query) {
+            const q = query.toLowerCase();
+            document.querySelectorAll('.searchable-row').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.classList.toggle('search-hidden', !text.includes(q));
+            });
+        }
+
+        /* ---- Modals ---- */
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        /* ---- Transfer Form ---- */
+        function toggleDest() { document.getElementById('txDest').style.display = document.getElementById('txOp').value === 'TRANSFER' ? 'block' : 'none'; }
+
+        /* ---- Toasts ---- */
+        function dismissToast(el) { const t = el.parentElement; t.classList.add('removing'); setTimeout(() => t.remove(), 300); }
+        document.querySelectorAll('.toast').forEach(t => { setTimeout(() => { t.classList.add('removing'); setTimeout(() => t.remove(), 300); }, 5000); });
+
+        /* ---- Validation (Admin > 1000) ---- */
+        function validateAdminTx() {
+            const a = parseFloat(document.getElementById('txAmount').value);
+            const i = document.getElementById('txAmount');
+            const e = document.getElementById('txAmountError');
+            if (isNaN(a) || a <= 1000) { i.classList.add('error'); e.style.display = 'block'; return false; }
+            i.classList.remove('error'); e.style.display = 'none';
+            document.getElementById('txSubmitBtn').classList.add('loading');
+            return true;
+        }
+    </script>
+</body>
+
+</html>

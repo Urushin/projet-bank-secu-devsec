@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditBank — Sign In</title>
+    <link rel="stylesheet" th:href="@{/styles/style.css}">
+</head>
+
+<body>
+    <div class="login-page">
+        <div class="login-card animate-in">
+            <div class="login-logo">
+                <div class="sidebar-logo-icon">A</div>
+                <span class="sidebar-logo-text">AuditBank</span>
+            </div>
+
+            <h2 class="login-title">Welcome back</h2>
+            <p class="login-subtitle">Sign in to your secure banking dashboard</p>
+
+            <!-- Error Toast -->
+            <div th:if="${param.error}" class="toast error"
+                style="margin-bottom:1.5rem;pointer-events:auto;animation:none;min-width:auto;width:100%;">
+                <div class="toast-icon">✕</div>
+                <div class="toast-content">
+                    <div class="toast-title">Authentication failed</div>
+                    <div class="toast-message">Invalid email or password.</div>
+                </div>
+            </div>
+
+            <!-- Logout Toast -->
+            <div th:if="${param.logout}" class="toast success"
+                style="margin-bottom:1.5rem;pointer-events:auto;animation:none;min-width:auto;width:100%;">
+                <div class="toast-icon">✓</div>
+                <div class="toast-content">
+                    <div class="toast-title">Signed out</div>
+                    <div class="toast-message">You have been logged out successfully.</div>
+                </div>
+            </div>
+
+            <!-- Session Expired Toast -->
+            <div th:if="${param.expired}" class="toast warning"
+                style="margin-bottom:1.5rem;pointer-events:auto;animation:none;min-width:auto;width:100%;">
+                <div class="toast-icon">⏱</div>
+                <div class="toast-content">
+                    <div class="toast-title">Session expired</div>
+                    <div class="toast-message">Your session has timed out. Please sign in again.</div>
+                </div>
+            </div>
+
+            <form th:action="@{/login}" method="post" id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">Email address <span class="required">*</span></label>
+                    <input class="form-input" type="email" id="username" name="username" placeholder="admin@bank.com"
+                        required autofocus>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password <span class="required">*</span></label>
+                    <input class="form-input" type="password" id="password" name="password" placeholder="••••••••"
+                        required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg" id="loginBtn"
+                    style="width:100%;margin-top:var(--space-md);" onclick="this.classList.add('loading')">
+                    Sign in
+                </button>
+            </form>
+
+            <p style="text-align:center;margin-top:var(--space-xl);font-size:var(--text-xs);color:var(--text-muted);">
+                🔒 Secured by Spring Security · BCrypt Encrypted
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>
