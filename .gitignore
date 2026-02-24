@@ -1,0 +1,10 @@
+target/
+build/
+.settings/
+.classpath
+.project
+.vscode/
+bin/
+*.class
+*.war
+*.jar
