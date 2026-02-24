@@ -341,7 +341,39 @@ img-src 'self' data:;                        → Images : nous + inline (data:)
 script-src 'self' 'unsafe-inline';           → JS : notre domaine + inline
 ```
 
-#### 5.2.5. Enforcement HTTPS et Redirection HTTP→HTTPS
+#### 5.2.5. Protection CORS (Cross-Origin Resource Sharing)
+
+```java
+.cors(cors -> cors.configurationSource(request -> {
+    var corsConfig = new CorsConfiguration();
+    corsConfig.setAllowedOrigins(List.of("https://localhost:8443"));
+    corsConfig.setAllowedMethods(List.of("GET", "POST"));
+    corsConfig.setAllowedHeaders(List.of("*"));
+    corsConfig.setAllowCredentials(true);
+    return corsConfig;
+}))
+```
+
+| Paramètre | Valeur | Justification |
+|---|---|---|
+| `allowedOrigins` | `https://localhost:8443` | Seul notre serveur peut faire des requêtes |
+| `allowedMethods` | `GET`, `POST` | Aucune méthode destructive (PUT, DELETE) exposée |
+| `allowCredentials` | `true` | Autorise l'envoi de cookies (session JSESSIONID) |
+
+> **🔒 Pourquoi ?** Sans CORS, un site malveillant (`evil-site.com`) pourrait soumettre des requêtes POST de transfert bancaire au nom d'un utilisateur connecté.
+
+#### 5.2.6. Protection CSRF (Cross-Site Request Forgery)
+
+Spring Security active **automatiquement** la protection CSRF. Chaque formulaire Thymeleaf construit avec `th:action` inclut un token CSRF invisible :
+
+```html
+<!-- Thymeleaf génère automatiquement un champ caché -->
+<input type="hidden" name="_csrf" value="a1b2c3d4-token-unique" />
+```
+
+> **🔒 Résultat :** Un attaquant ne peut pas forger un formulaire de transfert, car il ne connaît pas le token CSRF de la session de la victime.
+
+#### 5.2.7. Enforcement HTTPS et Redirection HTTP→HTTPS
 
 ```java
 // Dans SecuConfig.java — Force TOUTES les requêtes à passer par HTTPS

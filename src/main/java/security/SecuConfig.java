@@ -27,6 +27,17 @@ public class SecuConfig {
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
+                                // --- CORS Protection ---
+                                // Restreint les requêtes cross-origin (seule notre propre origine est
+                                // autorisée)
+                                .cors(cors -> cors.configurationSource(request -> {
+                                        var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                                        corsConfig.setAllowedOrigins(java.util.List.of("https://localhost:8443"));
+                                        corsConfig.setAllowedMethods(java.util.List.of("GET", "POST"));
+                                        corsConfig.setAllowedHeaders(java.util.List.of("*"));
+                                        corsConfig.setAllowCredentials(true);
+                                        return corsConfig;
+                                }))
                                 // --- HTTPS Enforcement ---
                                 // Force TOUTES les requêtes à passer par HTTPS
                                 .requiresChannel(channel -> channel
